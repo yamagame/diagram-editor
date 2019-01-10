@@ -70,7 +70,7 @@ export default class BusStopEditDialog extends Component {
                   })
                 }}
                 placeholder="標柱名"
-                readOnly={this.props.readonly?'readonly':null}
+                readOnly={this.props.readOnly?'readonly':null}
               />
             </Col>
           </Row>
@@ -127,5 +127,5 @@ BusStopEditDialog.defaultProps = {
     name: '',
     data: {},
   },
-  readonly: false,
+  readOnly: false,
 }
