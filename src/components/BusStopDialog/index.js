@@ -76,7 +76,7 @@ export default class BusStopEditDialog extends Component {
           </Row>
           <Row>
             <Col md={12}>
-              <table style={{ width: '100%', }}>
+              <table style={{ width: '100%', fontSize: 12, }}>
                 <thead>
                   <tr key={i} style={{ border: 'solid 1px lightgray',  }} >
                     <th width={50}>
