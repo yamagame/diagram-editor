@@ -20,7 +20,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && ./copy-to-docs.sh",
+    "build": "PUBLIC_URL=/diagram-editor react-scripts build && ./copy-to-docs.sh",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
