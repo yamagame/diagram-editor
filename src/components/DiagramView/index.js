@@ -184,85 +184,64 @@ export default class DiagramView extends Component {
     //ポイントのドラッグ
     this.dragHandle = d3.drag()
       .on('start', (_d, i) => {
-        const d = _d.org;
-        this.cursorData.visible = false;
-        this.drawCursor();
-        let s = null;
-        let spindex = 0;
-        this.pointData.some( (d, i) => {
-          if (d.selected && d.lastSelect) {
-            s = d;
-            spindex = i;
-            return true;
-          }
-          return false;
-        })
-        this.altKey = d3.event.sourceEvent.altKey;
-        if (d3.event.sourceEvent.altKey && s !== null && spindex !== i) {
-          //配置済みの点との接続
-          const b = textDiagramData(Utils.save(this));
-          const pointLen = this.pointData.length;
-          const lineLen = this.lineData.length;
-          this.pointData.forEach( d => {
-            delete d.lastSelect;
-          })
-          d.lastSelect = true;
-          this.selectPoint(d);
-          const ended = (_d, i) => {
-            const d = _d.org;
-            this.makeLine(s, d);
-            this.onChange();
-            this.updateData();
-            this.update();
-            if (this.pointData.length != pointLen || this.lineData.length != lineLen) {
-              this.setUndo(b);
+        if (!this.props.readOnly) {
+          const d = _d.org;
+          this.cursorData.visible = false;
+          this.drawCursor();
+          let s = null;
+          let spindex = 0;
+          this.pointData.some( (d, i) => {
+            if (d.selected && d.lastSelect) {
+              s = d;
+              spindex = i;
+              return true;
             }
-          }
-          d3.event.on("end", ended);
-        } else {
-          //点のドラッグ
-          const b = textDiagramData(Utils.save(this));
-          let drag = false;
-          let clear = false;
-          if (!d.selected) {
-            clear = true;
-          }
-          this.pointData.forEach( d => {
-            delete d.lastSelect;
+            return false;
           })
-          d.lastSelect = true;
-          this.selectPoint(d);
-          this.pointData.forEach( d => {
-            if (d.selected) {
-              d.ox = this.xScale(d.x);
-              d.oy = this.yScale(d.y);
+          this.altKey = d3.event.sourceEvent.altKey;
+          if (d3.event.sourceEvent.altKey && s !== null && spindex !== i) {
+            //配置済みの点との接続
+            const b = textDiagramData(Utils.save(this));
+            const pointLen = this.pointData.length;
+            const lineLen = this.lineData.length;
+            this.pointData.forEach( d => {
+              delete d.lastSelect;
+            })
+            d.lastSelect = true;
+            this.selectPoint(d);
+            const ended = (_d, i) => {
+              const d = _d.org;
+              this.makeLine(s, d);
+              this.onChange();
+              this.updateData();
+              this.update();
+              if (this.pointData.length != pointLen || this.lineData.length != lineLen) {
+                this.setUndo(b);
+              }
             }
-          })
-          const dragged = (_d) => {
-            const d = _d.org;
-            drag = true;
-            if (!d3.event.sourceEvent.shiftKey && clear) {
-              this.pointData.forEach( d => {
-                this.deselectPoint(d);
-              })
-              this.lineData.forEach( d => {
-                delete d.selected;
-              })
-              this.selectPoint(d);
+            d3.event.on("end", ended);
+          } else {
+            //点のドラッグ
+            const b = textDiagramData(Utils.save(this));
+            let drag = false;
+            let clear = false;
+            if (!d.selected) {
+              clear = true;
             }
             this.pointData.forEach( d => {
+              delete d.lastSelect;
+            })
+            d.lastSelect = true;
+            this.selectPoint(d);
+            this.pointData.forEach( d => {
               if (d.selected) {
-                d.ox += d3.event.dx;
-                d.oy += d3.event.dy;
-                d.x = this.xScale.invert(d.ox);
-                //d.y = this.yScale.invert(d.oy);
+                d.ox = this.xScale(d.x);
+                d.oy = this.yScale(d.y);
               }
             })
-            this.update();
-          }
-          const ended = (_d, i) => {
-            const d = _d.org;
-            if (!drag) {
+            const dragged = (_d) => {
+              const d = _d.org;
+              drag = true;
               if (!d3.event.sourceEvent.shiftKey && clear) {
                 this.pointData.forEach( d => {
                   this.deselectPoint(d);
@@ -271,19 +250,42 @@ export default class DiagramView extends Component {
                   delete d.selected;
                 })
                 this.selectPoint(d);
-                d.lastSelect = true;
               }
-            } else {
-              this.setUndo(b);
+              this.pointData.forEach( d => {
+                if (d.selected) {
+                  d.ox += d3.event.dx;
+                  d.oy += d3.event.dy;
+                  d.x = this.xScale.invert(d.ox);
+                  //d.y = this.yScale.invert(d.oy);
+                }
+              })
+              this.update();
             }
-            this.pointData.forEach( d => {
-              delete d.ox;
-              delete d.oy;
-            })
-            this.onChange();
-            this.update();
+            const ended = (_d, i) => {
+              const d = _d.org;
+              if (!drag) {
+                if (!d3.event.sourceEvent.shiftKey && clear) {
+                  this.pointData.forEach( d => {
+                    this.deselectPoint(d);
+                  })
+                  this.lineData.forEach( d => {
+                    delete d.selected;
+                  })
+                  this.selectPoint(d);
+                  d.lastSelect = true;
+                }
+              } else {
+                this.setUndo(b);
+              }
+              this.pointData.forEach( d => {
+                delete d.ox;
+                delete d.oy;
+              })
+              this.onChange();
+              this.update();
+            }
+            d3.event.on("drag", dragged).on("end", ended);
           }
-          d3.event.on("drag", dragged).on("end", ended);
         }
       })
 
@@ -294,44 +296,45 @@ export default class DiagramView extends Component {
         this.altKey = d3.event.sourceEvent.altKey;
         //ポイントの作成
         if (d3.event.sourceEvent.altKey) {
+          if (!this.props.readOnly) {
+            const b = textDiagramData(Utils.save(this));
 
-          const b = textDiagramData(Utils.save(this));
+            let lastSelected = null;
+            let spindex = 0;
+            this.pointData.some( (d, i) => {
+              if (d.selected && d.lastSelect) {
+                lastSelected = d;
+                spindex = i;
+                return true;
+              }
+              return false;
+            })
 
-          let lastSelected = null;
-          let spindex = 0;
-          this.pointData.some( (d, i) => {
-            if (d.selected && d.lastSelect) {
-              lastSelected = d;
-              spindex = i;
-              return true;
+            this.pointData.forEach( d => {
+              delete d.lastSelect;
+            })
+
+            const p = {
+              x: this.cursorData.x,
+              y: this.cursorData.y,
+              selected: true,
+              lastSelect: true,
             }
-            return false;
-          })
+            this.selectPoint(p);
+            this.pointData.push(p)
 
-          this.pointData.forEach( d => {
-            delete d.lastSelect;
-          })
+            if (lastSelected) {
+              this.makeLine(lastSelected, p);
+            }
 
-          const p = {
-            x: this.cursorData.x,
-            y: this.cursorData.y,
-            selected: true,
-            lastSelect: true,
+            this.onChange();
+            this.updateData();
+            this.update();
+            this.cursorData.visible = false;
+            this.drawCursor();
+
+            this.setUndo(b);
           }
-          this.selectPoint(p);
-          this.pointData.push(p)
-
-          if (lastSelected) {
-            this.makeLine(lastSelected, p);
-          }
-
-          this.onChange();
-          this.updateData();
-          this.update();
-          this.cursorData.visible = false;
-          this.drawCursor();
-
-          this.setUndo(b);
         }
         //マーキーの処理
         if (d3.event.sourceEvent.shiftKey) {
@@ -1162,104 +1165,112 @@ export default class DiagramView extends Component {
   }
 
   drawCursor = () => {
-    this.cursor.selectAll('rect').remove();
-    this.cursor.append('rect')
-      .attr('fill', 'none')
-      .attr('x', this.xScale(this.cursorData.x)-4)
-      .attr('y', this.yScale(this.cursorData.y)-4)
-      .attr('visibility', (this.cursorData.visible && this.altKey) ? 'visible' : 'hidden')
-      .attr('width', 8)
-      .attr('height', 8)
-      .attr('stroke-width', 1)
-      .attr('stroke', '#999')
-      .on('click', function(d, i) {
-        //console.log('click ?');
-      })
+    if (!this.props.readOnly) {
+      this.cursor.selectAll('rect').remove();
+      this.cursor.append('rect')
+        .attr('fill', 'none')
+        .attr('x', this.xScale(this.cursorData.x)-4)
+        .attr('y', this.yScale(this.cursorData.y)-4)
+        .attr('visibility', (this.cursorData.visible && this.altKey) ? 'visible' : 'hidden')
+        .attr('width', 8)
+        .attr('height', 8)
+        .attr('stroke-width', 1)
+        .attr('stroke', '#999')
+        .on('click', function(d, i) {
+          //console.log('click ?');
+        })
+    }
   }
 
   onKeyDown = (e) => {
     this.altKey = e.altKey;
-    //space key
-    if(e.keyCode === 32) {
-      e.preventDefault();
-      const b = textDiagramData(Utils.save(this));
-      this.pointData.forEach( d => {
-        delete d.lastSelect;
-      })
-      const p = {
-        x: this.cursorData.x,
-        y: this.cursorData.y,
-        lastSelect: true,
-      }
-      p.time = Utils.makeTimeText(p);
-      this.selectPoint(p);
-      this.pointData.push(p)
-      this.onChange();
-      this.updateData();
-      this.update();
-      this.cursorData.visible = false;
-      this.drawCursor();
-      this.setUndo(b);
-    }
+    // //space key
+    // if(e.keyCode === 32) {
+    //   e.preventDefault();
+    //   if (!this.props.readOnly) {
+    //     const b = textDiagramData(Utils.save(this));
+    //     this.pointData.forEach( d => {
+    //       delete d.lastSelect;
+    //     })
+    //     const p = {
+    //       x: this.cursorData.x,
+    //       y: this.cursorData.y,
+    //       lastSelect: true,
+    //     }
+    //     p.time = Utils.makeTimeText(p);
+    //     this.selectPoint(p);
+    //     this.pointData.push(p)
+    //     this.onChange();
+    //     this.updateData();
+    //     this.update();
+    //     this.cursorData.visible = false;
+    //     this.drawCursor();
+    //     this.setUndo(b);
+    //   }
+    // }
     //delete key
     if(e.keyCode === 8 || e.keyCode === 46) {
       e.preventDefault();
-      let done = false;
-      const b = textDiagramData(Utils.save(this));
-      this.lineData.forEach( d => {
-        if (d.s.selected || d.d.selected) {
-          d.selected = true;
-        }
-      })
-      let pointData = [];
-      this.pointData.forEach( d => {
-        if (!d.selected) {
-          pointData.push(d);
-        } else {
-          done = true;
-          if (d.time) {
-            this.textData.splice(this.textData.indexOf(d.time),1);
+      if (!this.props.readOnly) {
+        let done = false;
+        const b = textDiagramData(Utils.save(this));
+        this.lineData.forEach( d => {
+          if (d.s.selected || d.d.selected) {
+            d.selected = true;
           }
-        }
-      })
-      let lineData = [];
-      this.lineData.forEach( d => {
-        if (!d.selected) {
-          lineData.push(d);
-        }
-      })
-      if (done) this.setUndo(b);
-      this.pointData = pointData;
-      this.lineData = lineData;
-      this.onChange();
-      this.updateData();
-      this.update();
+        })
+        let pointData = [];
+        this.pointData.forEach( d => {
+          if (!d.selected) {
+            pointData.push(d);
+          } else {
+            done = true;
+            if (d.time) {
+              this.textData.splice(this.textData.indexOf(d.time),1);
+            }
+          }
+        })
+        let lineData = [];
+        this.lineData.forEach( d => {
+          if (!d.selected) {
+            lineData.push(d);
+          }
+        })
+        if (done) this.setUndo(b);
+        this.pointData = pointData;
+        this.lineData = lineData;
+        this.onChange();
+        this.updateData();
+        this.update();
+      }
     }
     //enter key
     if(e.keyCode === 13) {
       e.preventDefault();
-      const b = textDiagramData(Utils.save(this));
-      let selectedBusStop = 0;
-      this.busStops.some( (b, i) => {
-        if (!b.selected) return false;
-        selectedBusStop = i+1;
-        return true;
-      })
-      if (selectedBusStop >= 1
-       && selectedBusStop <= this.busStops.length) {
-        if (e.shiftKey) {
-          if (this.busStops.length <= 2 || selectedBusStop < 2) return;
-          Utils.deleteBusstop(this, selectedBusStop-2);
-          this.setUndo(b);
-        } else {
-          Utils.insertBusstop(this, selectedBusStop-1);
-          this.setUndo(b);
+      if (!this.props.readOnly) {
+        const b = textDiagramData(Utils.save(this));
+        let selectedBusStop = 0;
+        this.busStops.some( (b, i) => {
+          if (!b.selected) return false;
+          selectedBusStop = i+1;
+          return true;
+        })
+        if (selectedBusStop >= 1
+        && selectedBusStop <= this.busStops.length) {
+          if (e.shiftKey) {
+            if (this.busStops.length <= 2 || selectedBusStop < 2) return;
+            Utils.deleteBusstop(this, selectedBusStop-2);
+            this.setUndo(b);
+          } else {
+            Utils.insertBusstop(this, selectedBusStop-1);
+            this.setUndo(b);
+          }
+          this.onChange();
+          this.updateData();
+          this.clearGrid(this.grid);
+          this.clearGrid(this.menu);
+          this.update();
         }
-        this.onChange();
-        this.updateData();
-        this.clearGrid(this.grid);
-        this.clearGrid(this.menu);
-        this.update();
       }
     }
     //left key 
@@ -1273,7 +1284,7 @@ export default class DiagramView extends Component {
     //command+z
     if(e.metaKey && e.keyCode === 90) {
       e.preventDefault();
-      if (!this.props.readonly) {
+      if (!this.props.readOnly) {
         if (e.shiftKey) {
           this.doRedo();
         } else {
@@ -1284,7 +1295,9 @@ export default class DiagramView extends Component {
   }
 
   onKeyUp = (e) => {
-    this.altKey = e.altKey;
+    if (!this.props.readOnly) {
+      this.altKey = e.altKey;
+    }
   }
 
   onMouseLeave = (event) => {
@@ -1446,7 +1459,7 @@ export default class DiagramView extends Component {
           overflow: 'hidden',
           border: 'solid 1px lightgray',
         }}
-        tabIndex={0}
+        tabIndex={this.props.tabIndex}
         focusable={true}
         onKeyDown={this.onKeyDown}
         onKeyUp={this.onKeyUp}
@@ -1481,5 +1494,6 @@ export default class DiagramView extends Component {
 
 DiagramView.defaultProps = {
   params: {},
-  readonly: false,
+  readOnly: false,
+  tabIndex: 0,
 }
