@@ -1143,6 +1143,7 @@ export default class DiagramView extends Component {
               this.props.onEditBusStop({
                 name: busStop.name,
                 data: this.busStopData(d.index),
+                index: d.index,
               });
             }
           } else {
@@ -1445,6 +1446,21 @@ export default class DiagramView extends Component {
 
     this.menu
       .call(this.menuZoomBehavior.transform, d3.zoomIdentity.translate(0, 0).scale(1));
+  }
+
+  changeBusStop = (busStop) => {
+    if (!this.props.readOnly) {
+      const i = busStop.index-1;
+      if (i >= 0 && i < this.busStops.length) {
+        const name = busStop.name.trim().replace(/\s/g, '');
+        if (this.busStops[i].name !== name) {
+          const b = textDiagramData(Utils.save(this));
+          this.busStops[i].name = name;
+          this.onChange();
+          this.setUndo(b);
+        }
+      }
+    }
   }
 
   render() {

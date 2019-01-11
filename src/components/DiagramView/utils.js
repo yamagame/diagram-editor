@@ -102,7 +102,9 @@ export const load = ({ busStops, timeLines, }) => {
 }
 
 export const save = ({ busStops, pointData, lineData }) => {
-  const stops = busStops.map( v => v.name.trim() );
+  const stops = busStops.map( v => {
+    return v.name.trim().replace(/\s/g, '');
+  });
   const p = pointData.sort( (a, b) => {
     if (a.x > b.x) return  1;
     if (a.x < b.x) return -1;

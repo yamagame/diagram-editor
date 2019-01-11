@@ -61,7 +61,10 @@ export default class Diagram extends Component {
   }
 
   onEditedBusStop = (busStop) => {
-    this.state.busStop.name = busStop.name;
+    this.diagramView.changeBusStop({
+      ...this.state.busStop,
+      name: busStop.name,
+    })
     this.setState({
       showBusStopDialog: false,
     });
