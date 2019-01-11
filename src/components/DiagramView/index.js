@@ -11,6 +11,13 @@ const limit24 = (v) => {
   return v % oneday;
 }
 
+const limitMin = (v) => {
+  if (v < 0) {
+    return parseInt((v-60+30)/60)*60
+  }
+  return parseInt((v+30)/60)*60;
+}
+
 const textDiagramData = (t) => {
   return `${t.busStops.split('\n').join(' ')}\n${t.timeLines.join('\n')}\n`;
 }
@@ -255,7 +262,7 @@ export default class DiagramView extends Component {
                 if (d.selected) {
                   d.ox += d3.event.dx;
                   d.oy += d3.event.dy;
-                  d.x = this.xScale.invert(d.ox);
+                  d.x = limitMin(this.xScale.invert(d.ox));
                   //d.y = this.yScale.invert(d.oy);
                 }
               })
@@ -474,7 +481,7 @@ export default class DiagramView extends Component {
       })
       .on("mousemove", () => {
         const p = d3.mouse(this.svgElement);
-        this.cursorData.x = this.xScale.invert(p[0]);
+        this.cursorData.x = limitMin(this.xScale.invert(p[0]));
         this.cursorData.y = parseInt(this.yScale.invert(p[1])+0.5);
         this.cursorData.visible = true;
         this.drawCursor();
