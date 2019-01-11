@@ -87,10 +87,11 @@ export default class DiagramView extends Component {
   }
 
   componentDidUpdate() {
+    const { width, height } = this.size();
     const transformX = d3.zoomTransform(this.base.node());
     const transformY = d3.zoomTransform(this.menu.node());
-    this.xScale.range([transformX.applyX(0), transformX.applyX(this.state.width)]);
-    this.yScale.range([transformY.applyY(0), transformY.applyY(this.state.height)]);
+    this.xScale.domain([0, width*this.timeLineWidth()]).range([transformX.applyX(0), transformX.applyX(width)]);
+    this.yScale.domain([this.gridScale.dy, height*this.busLineHeight()+this.gridScale.dy]).range([transformY.applyY(0), transformY.applyY(height)]);
     this.updateData()
     this.clearGrid(this.grid);
     this.clearGrid(this.menu);
