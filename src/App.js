@@ -10,11 +10,6 @@ const Diagram = Loadable({
   loading,
 });
 
-const OpenData = Loadable({
-  loader: () => import('./containers/OpenData'),
-  loading,
-});
-
 class App extends Component {
   render() {
     return (
@@ -22,7 +17,6 @@ class App extends Component {
         <div className="App">
           <Switch>
             <Route exact path={`${process.env.PUBLIC_URL}/`} component={Diagram} />
-            <Route exact path={`${process.env.PUBLIC_URL}/open-data`} component={OpenData} />
           </Switch>
         </div>
       </Router>
