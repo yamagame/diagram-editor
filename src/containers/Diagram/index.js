@@ -192,9 +192,12 @@ export default class Diagram extends Component {
       times.forEach( t => {
         const pattern = t['odpt:busroutePattern'];
         if (tm[pattern] == null) {
-          tm[pattern] = [];
+          tm[pattern] = {};
         }
-        tm[pattern].push(t);
+        if (tm[pattern][t['odpt:calendar']] == null) {
+          tm[pattern][t['odpt:calendar']] = [];
+        }
+        tm[pattern][t['odpt:calendar']].push(t);
       })
       return tm;
     })();
@@ -215,8 +218,17 @@ export default class Diagram extends Component {
       return s;
     }
 
+    function matchCalendar(s) {
+      const t = s.match(/^odpt\.Calendar:(.+)/)
+      if (t) {
+        return t[1];
+      }
+      return s;
+    }
+
     function poleInfo(order) {
-      return order.map( o => {
+      return order.map( v => {
+        const o = { ...v }
         const pl = pole[o['odpt:busstopPole']];
         if (pl && typeof pl['dc:title'] !== 'undefined') {
           if (typeof pl['odpt:busstopPoleNumber'] !== 'undefined') {
@@ -235,66 +247,86 @@ export default class Diagram extends Component {
 
     const busroutes = {};
 
+    const days = {
+      Weekday: '平日',
+      Saturday: '土曜',
+      Holiday: '休日',
+    }
+
     route.forEach( r => {
       const br = matchBusroute(r['odpt:busroute']);
-      if (busroutes[br] == null) {
-        busroutes[br] = {
-          title: r['dc:title'],
-          route:[],
-        };
-      }
       const d = {
-        note: r['odpt:note'],
         direction: r['odpt:direction'],
         pattern: r['odpt:pattern'],
-        order: poleInfo(r['odpt:busstopPoleOrder']),
         route: matchBusroute(r['odpt:busroute']),
       }
       const busroutePattern = `odpt.BusroutePattern:${d.route}.${d.pattern}.${d.direction}`;
-      const t = times[busroutePattern]
+      const t = times[busroutePattern];
       if (t) {
-        const times = t.map( q => {
-          const t = q['odpt:busTimetableObject'].map( t => {
-            const d = t['odpt:departureTime'];
-            if (d) return {
-              pole: matchBuspole(t['odpt:busstopPole']),
-              time: d,
+        Object.keys(t).forEach( calendar => {
+          console.log(br, calendar);
+          if (t[calendar]) {
+            if (busroutes[`${br}-${calendar}`] == null) {
+              busroutes[`${br}-${calendar}`] = {
+                title: `${r['dc:title']}:${days[matchCalendar(calendar)]}:${r['odpt:direction']}`,
+                route:[],
+              };
             }
-            return {
-              pole: matchBuspole(t['odpt:busstopPole']),
-              time: t['odpt:arrivalTime'],
+            const d = {
+              note: r['odpt:note'],
+              direction: r['odpt:direction'],
+              pattern: r['odpt:pattern'],
+              order: poleInfo(r['odpt:busstopPoleOrder']),
+              route: matchBusroute(r['odpt:busroute']),
+              calendar,
             }
-          })
-          return t;
-        });
-        function reorder(times, order) {
-          const t = times.map( time => {
-            const q = [];
-            let n = -1;
-            time.forEach( (t, i) => {
-              while (n < order.length) {
-                n ++;
-                if (order[n].pole === t.pole) {
-                  q.push(t)
-                  break;
-                } else {
-                  q.push({ pole: t.pole, time: '-' })
+            let times = t[calendar].map( q => {
+              const t = q['odpt:busTimetableObject'].map( t => {
+                const d = t['odpt:departureTime'];
+                if (d) return {
+                  pole: matchBuspole(t['odpt:busstopPole']),
+                  time: d,
                 }
-              }
-            })
-            return q;
-          })
-          return t;
-        }
-        const order = d.order;
-        d.times = reorder(times, order);
-        if (d.direction === '2') {
-          d.order = d.order.reverse()
-          d.times = d.times.reverse();
-        }
-        if (times.length > 0) {
-          busroutes[br].route.push(d)
-        }
+                return {
+                  pole: matchBuspole(t['odpt:busstopPole']),
+                  time: t['odpt:arrivalTime'],
+                }
+              })
+              return t;
+            });
+            function reorder(times, order) {
+              const t = times.map( time => {
+                const q = [];
+                let n = -1;
+                time.forEach( (t, i) => {
+                  while (n < order.length) {
+                    n ++;
+                    if (order[n].pole === t.pole) {
+                      q.push(t)
+                      break;
+                    } else {
+                      q.push({ pole: t.pole, time: '-' })
+                    }
+                  }
+                })
+                return q;
+              })
+              return t;
+            }
+            const order = d.order;
+            d.times = reorder(times, order);
+            if (d.direction === '2') {
+              d.order = [ ...d.order ].reverse();
+              d.times = [ ...d.times ].reverse();
+            } else {
+              d.order = [ ...d.order ]
+              d.times = [ ...d.times ]
+            }
+            if (times.length > 0) {
+              busroutes[`${br}-${calendar}`].route.push(d)
+            }
+          }
+        });
       }
     })
 
@@ -369,12 +401,12 @@ export default class Diagram extends Component {
               style={{marginRight: 10}}
               role="button"
             >使い方</a>
-            <button
+            {/* <button
               className="btn btn-sm btn-outline-secondary"
               style={{marginRight: 10}}
               type="button"
               onClick={this.openConfigDialog}
-            >読み込み</button>
+            >読み込み</button> */}
             <button
               className="btn btn-sm btn-outline-secondary"
               style={{marginRight: 10}}

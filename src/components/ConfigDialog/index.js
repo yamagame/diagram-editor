@@ -66,8 +66,10 @@ export default class ConfigDialog extends Component {
         <Modal.Body>
           <Row>
             <Col md={12}>
+              <div>
               <p><a href="https://tokyochallenge.odpt.org/" target="open-data-challenge">東京公共交通オープンデータチャレンジ</a>のデータの読み込みができます。<br/>
                 コンシューマキーを入力して、バス事業者を選択後、OKボタンをクリックしてください。</p>
+              </div>
             </Col>
             <Col md={12}>
               <input
@@ -83,22 +85,22 @@ export default class ConfigDialog extends Component {
               />
             </Col>
             <Col md={12}>
-            <p>
-            {
-              <Dropdown>
-                <Dropdown.Toggle size="sm" variant="outline-secondary" id="dropdown-basic">
-                  { this.state.operator.title ? this.state.operator.title : 'バス事業者を選択してください' }
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  {
-                    this.props.operators.map( (r, i) => {
-                      return <Dropdown.Item key={i} onSelect={this.onSelectHandler(r)} active={ this.state.operator.title === r.title } >{r.title}</Dropdown.Item>
-                    })
-                  }
-                </Dropdown.Menu>
-              </Dropdown>
-            }
-            </p>
+            <div style={{ marginBottom: 20, }}>
+              {
+                <Dropdown>
+                  <Dropdown.Toggle size="sm" variant="outline-secondary" id="dropdown-basic">
+                    { this.state.operator.title ? this.state.operator.title : 'バス事業者を選択してください' }
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    {
+                      this.props.operators.map( (r, i) => {
+                        return <Dropdown.Item key={i} onSelect={this.onSelectHandler(r)} active={ this.state.operator.title === r.title } >{r.title}</Dropdown.Item>
+                      })
+                    }
+                  </Dropdown.Menu>
+                </Dropdown>
+              }
+            </div>
             </Col>
             <Col md={12}>
               <div style={{ color: 'red' }}>
