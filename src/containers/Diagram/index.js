@@ -81,6 +81,8 @@ export default class Diagram extends Component {
     this.setState({
       showDiagramDataDialog: false,
       diagramData,
+    }, () => {
+      AsyncStorage.setItem('data', diagramData)
     });
   }
 

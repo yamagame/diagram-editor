@@ -8,6 +8,13 @@ export const limit24 = (v) => {
   return v % oneday;
 }
 
+export const limitMin = (v) => {
+  if (v < 0) {
+    return parseInt((v-60+30)/60)*60
+  }
+  return parseInt((v+30)/60)*60;
+}
+
 export const toXPoint = (time, pretime) => {
   const p = time.trim().split(':');
   let hour = 0;
