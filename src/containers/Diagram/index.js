@@ -218,8 +218,12 @@ export default class Diagram extends Component {
     function poleInfo(order) {
       return order.map( o => {
         const pl = pole[o['odpt:busstopPole']];
-        if (pl) {
-          o.title = pl['dc:title'];
+        if (pl && typeof pl['dc:title'] !== 'undefined') {
+          if (typeof pl['odpt:busstopPoleNumber'] !== 'undefined') {
+            o.title = `${pl['dc:title']}(${pl['odpt:busstopPoleNumber']})`;
+          } else {
+            o.title = pl['dc:title'];
+          }
         } else {
           o.title = matchBuspole(o['odpt:busstopPole']);
         }
@@ -284,6 +288,10 @@ export default class Diagram extends Component {
         }
         const order = d.order;
         d.times = reorder(times, order);
+        if (d.direction === '2') {
+          d.order = d.order.reverse()
+          d.times = d.times.reverse();
+        }
         if (times.length > 0) {
           busroutes[br].route.push(d)
         }
