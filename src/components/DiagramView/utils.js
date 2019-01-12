@@ -3,6 +3,11 @@ export const oneday = 24*60*60;
 export const abs = v => v > 0 ? v : -v;
 export const sgn = v => v > 0 ? 1 : -1;
 
+export const limit24 = (v) => {
+  if (v < 0) v += oneday;
+  return v % oneday;
+}
+
 export const toXPoint = (time, pretime) => {
   const p = time.trim().split(':');
   let hour = 0;
@@ -23,6 +28,12 @@ export const toXPoint = (time, pretime) => {
     let d = (pretime % oneday) - (x % oneday);
     if (abs(d) >= oneday/2) {
       t += sgn(d)*oneday;
+    }
+    if (pretime >= oneday) {
+      t += parseInt(pretime/oneday)*oneday;
+    } else
+    if (pretime < 0) {
+      t += parseInt(pretime/oneday)*oneday;
     }
   }
   return { t, x };
@@ -78,7 +89,7 @@ export const load = ({ busStops, timeLines, }) => {
           w.time = makeTimeText(w);
           pointData.push(w);
           r.push(w)
-          pre = x;
+          pre = t;
         })
       }
       idx ++;
@@ -193,11 +204,10 @@ export const save = ({ busStops, pointData, lineData }) => {
       u.push([]);
     })
     t.forEach( v => {
-      u[v.y-1].push(v);
+      if (v.y > 0 && v.y <= u.length) {
+        u[v.y-1].push(v);
+      }
     })
-    // u.forEach( t => {
-    //   console.log(t);
-    // })
     timeLines.push(u.map( p => {
       if (p.length === 0) return '-';
       let t = '';
