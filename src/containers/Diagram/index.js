@@ -268,9 +268,10 @@ export default class Diagram extends Component {
     let calendars = {};
     let calendarData = [ ...CalendarData ];
     busTimetable.forEach( t => {
-      const c = matchCalendar(t['odpt:calendar']);
+      const cal = t['odpt:calendar'];
+      const c = matchCalendar(cal);
       if (!CalendarData.some( t => {
-        return (t.key === c);
+        return (t.key === cal);
       })) {
         if (!calendars[t['odpt:calendar']]) {
           calendars[t['odpt:calendar']] = c;
