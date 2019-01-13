@@ -16,6 +16,12 @@ const BusTimetableAPI = 'BusTimetable';
 const BusstopPoleAPI = 'BusstopPole';
 const BusroutePatternAPI = 'BusroutePattern';
 
+const CalendarData = [
+  { title: '平日:Weekday', key: 'odpt.Calendar:Weekday', },
+  { title: '土曜:Saturday', key: 'odpt.Calendar:Saturday', },
+  { title: '休日:Holiday', key: 'odpt.Calendar:Holiday', },
+];
+
 const AsyncStorage = {
   getItem: function(key, defaultValue) {
     const value = localStorage.getItem(`${namespace}-${key}`);
@@ -24,6 +30,30 @@ const AsyncStorage = {
   setItem: function(key, value) {
     localStorage.setItem(`${namespace}-${key}`, JSON.stringify({ data: value }));
   },
+}
+
+function matchBusroute(s) {
+  const t = s.match(/^odpt\.Busroute:(.+)/)
+  if (t) {
+    return t[1];
+  }
+  return s;
+}
+
+function matchBuspole(s) {
+  const t = s.match(/^odpt\.BusstopPole:(.+)/)
+  if (t) {
+    return t[1];
+  }
+  return s;
+}
+
+function matchCalendar(s) {
+  const t = s.match(/^odpt\.Calendar:(.+)/)
+  if (t) {
+    return t[1];
+  }
+  return s;
 }
 
 export default class Diagram extends Component {
@@ -40,13 +70,18 @@ export default class Diagram extends Component {
       params: AsyncStorage.getItem('params', {}),
       width: window.innerWidth,
       height: window.innerHeight,
-      diagramData: AsyncStorage.getItem('data', ''),
+      diagramData: AsyncStorage.getItem('diagramData', ''),
       diagramEditData: '',
-      busRouteTable: AsyncStorage.getItem('busRouteTable', {}),
+      busstopPole: AsyncStorage.getItem('busstopPole', []),
+      busroutePattern: AsyncStorage.getItem('busroutePattern', []),
+      busTimetable: AsyncStorage.getItem('busTimetable', []),
+      busRouteTable: AsyncStorage.getItem('busRouteTable', []),
       consumerKey: AsyncStorage.getItem('consumerKey', ''),
       operator: AsyncStorage.getItem('operator', { title: '', key: '', }),
       loading: '',
       selectedRoute: AsyncStorage.getItem('selectedRoute', 0),
+      selectedCalendar: AsyncStorage.getItem('selectedCalendar', 0),
+      calendarData: AsyncStorage.getItem('calendarData', CalendarData),
     }
   }
 
@@ -101,7 +136,7 @@ export default class Diagram extends Component {
       showDiagramDataDialog: false,
       diagramData,
     }, () => {
-      AsyncStorage.setItem('data', diagramData)
+      AsyncStorage.setItem('diagramData', diagramData)
     });
   }
 
@@ -112,7 +147,7 @@ export default class Diagram extends Component {
   }
 
   onChangeData = (data) => {
-    AsyncStorage.setItem('data', this.diagramView.diagramData);
+    AsyncStorage.setItem('diagramData', this.diagramView.diagramData);
   }
 
   onChangeParam = (params) => {
@@ -143,6 +178,8 @@ export default class Diagram extends Component {
       delete busRouteTable[this.state.operator.key];
     }
     this.setState({
+      busstopPole: [],
+      busroutePattern: [],
       showConfigDialog: false,
       consumerKey,
       operator,
@@ -150,9 +187,13 @@ export default class Diagram extends Component {
     }, this.loadOpenData)
   }
 
-  loadJSON = (command) => {
+  loadJSON = async (command, params={}) => {
     return new Promise( resolve => {
-      fetch(`${api}/odpt:${command}?odpt:operator=odpt.Operator:${this.state.operator.key}&acl:consumerKey=${this.state.consumerKey}`)
+      const t = { ...params };
+      t['odpt:operator'] = `odpt.Operator:${this.state.operator.key}`;
+      t['acl:consumerKey'] = this.state.consumerKey;
+      const p = Object.keys(t).map( k => `${k}=${t[k]}`).join('&');
+      fetch(`${api}/odpt:${command}?${p}`)
         .then(function(response) {
           return response.json()
         }).then(function(json) {
@@ -166,86 +207,15 @@ export default class Diagram extends Component {
   loadOpenData = async () => {
     if (this.state.consumerKey === '') return;
     if (this.state.operator.key === '') return;
-
-    if (this.state.busRouteTable[this.state.operator.key]) return;
+    if (this.state.busstopPole.length > 0) return;
 
     this.setState({ loading: '読み込み中...' });
 
-    const BusstopPole = await this.loadJSON(BusstopPoleAPI);
-    const BusroutePattern = await this.loadJSON(BusroutePatternAPI);
-    const BusTimetable = await this.loadJSON(BusTimetableAPI);
-
-    const route = BusroutePattern;
-
-    const pole = (() => {
-      const pole = BusstopPole;
-      const pl = {}
-      pole.forEach( p => {
-        pl[p['owl:sameAs']] = p;
-      })
-      return pl;
-    })();
-
-    const times = (() => {
-      const times = BusTimetable;
-      const tm = {};
-      times.forEach( t => {
-        const pattern = t['odpt:busroutePattern'];
-        if (tm[pattern] == null) {
-          tm[pattern] = {};
-        }
-        if (tm[pattern][t['odpt:calendar']] == null) {
-          tm[pattern][t['odpt:calendar']] = [];
-        }
-        tm[pattern][t['odpt:calendar']].push(t);
-      })
-      return tm;
-    })();
-
-    function matchBusroute(s) {
-      const t = s.match(/^odpt\.Busroute:(.+)/)
-      if (t) {
-        return t[1];
-      }
-      return s;
-    }
-
-    function matchBuspole(s) {
-      const t = s.match(/^odpt\.BusstopPole:(.+)/)
-      if (t) {
-        return t[1];
-      }
-      return s;
-    }
-
-    function matchCalendar(s) {
-      const t = s.match(/^odpt\.Calendar:(.+)/)
-      if (t) {
-        return t[1];
-      }
-      return s;
-    }
-
-    function poleInfo(order) {
-      return order.map( v => {
-        const o = { ...v }
-        const pl = pole[o['odpt:busstopPole']];
-        if (pl && typeof pl['dc:title'] !== 'undefined') {
-          if (typeof pl['odpt:busstopPoleNumber'] !== 'undefined') {
-            o.title = `${pl['dc:title']}(${pl['odpt:busstopPoleNumber']})`;
-          } else {
-            o.title = pl['dc:title'];
-          }
-        } else {
-          o.title = matchBuspole(o['odpt:busstopPole']);
-        }
-        o['pole'] = matchBuspole(o['odpt:busstopPole']);
-        delete o['odpt:busstopPole'];
-        return o;
-      })
-    }
+    let busstopPole = await this.loadJSON(BusstopPoleAPI);
+    let busroutePattern = await this.loadJSON(BusroutePatternAPI);
 
     const busroutes = {};
+    const routeTable = {};
 
     const days = {
       Weekday: '平日',
@@ -253,125 +223,155 @@ export default class Diagram extends Component {
       Holiday: '休日',
     }
 
-    route.forEach( r => {
-      const br = matchBusroute(r['odpt:busroute']);
-      const d = {
-        direction: r['odpt:direction'],
-        pattern: r['odpt:pattern'],
-        route: matchBusroute(r['odpt:busroute']),
+    busroutePattern = busroutePattern.map( r => {
+      if (typeof r['odpt:note'] === 'undefined') {
+        r.title = `${r['dc:title']}`;
+      } else {
+        r.title = `${r['dc:title']}:${r['odpt:note']}`;
       }
-      const busroutePattern = `odpt.BusroutePattern:${d.route}.${d.pattern}.${d.direction}`;
-      const t = times[busroutePattern];
-      if (t) {
-        Object.keys(t).forEach( calendar => {
-          console.log(br, calendar);
-          if (t[calendar]) {
-            if (busroutes[`${br}-${calendar}`] == null) {
-              busroutes[`${br}-${calendar}`] = {
-                title: `${r['dc:title']}:${days[matchCalendar(calendar)]}:${r['odpt:direction']}`,
-                route:[],
-              };
-            }
-            const d = {
-              note: r['odpt:note'],
-              direction: r['odpt:direction'],
-              pattern: r['odpt:pattern'],
-              order: poleInfo(r['odpt:busstopPoleOrder']),
-              route: matchBusroute(r['odpt:busroute']),
-              calendar,
-            }
-            let times = t[calendar].map( q => {
-              const t = q['odpt:busTimetableObject'].map( t => {
-                const d = t['odpt:departureTime'];
-                if (d) return {
-                  pole: matchBuspole(t['odpt:busstopPole']),
-                  time: d,
-                }
-                return {
-                  pole: matchBuspole(t['odpt:busstopPole']),
-                  time: t['odpt:arrivalTime'],
-                }
-              })
-              return t;
-            });
-            function reorder(times, order) {
-              const t = times.map( time => {
-                const q = [];
-                let n = -1;
-                time.forEach( (t, i) => {
-                  while (n < order.length) {
-                    n ++;
-                    if (order[n].pole === t.pole) {
-                      q.push(t)
-                      break;
-                    } else {
-                      q.push({ pole: t.pole, time: '-' })
-                    }
-                  }
-                })
-                return q;
-              })
-              return t;
-            }
-            const order = d.order;
-            d.times = reorder(times, order);
-            if (d.direction === '2') {
-              d.order = [ ...d.order ].reverse();
-              d.times = [ ...d.times ].reverse();
-            } else {
-              d.order = [ ...d.order ]
-              d.times = [ ...d.times ]
-            }
-            if (times.length > 0) {
-              busroutes[`${br}-${calendar}`].route.push(d)
-            }
-          }
-        });
-      }
+      return r;
+    }).sort((a,b) => {
+      if (a.title > b.title) return -1;
+      if (a.title < b.title) return  1;
+      return 0;
     })
-
-    //console.log(JSON.stringify(busroutes, null, '  '));
-
-    const routeTable = {};
-
-    Object.keys(busroutes).forEach( k => {
-      busroutes[k].route.forEach( v => {
-        routeTable[`${busroutes[k].title} ${v.note}`] = {
-          title: `${busroutes[k].title} ${v.note ? v.note : ''}`,
-          busStops: `${v.order.map( v => v.title ).map( v => v.replace(/\s/g,'')).join(' ')}`,
-          times: `${v.times.map( t => t.map( t => t.time ).join(' ')).join('\n')}`,
-        }
-      })
-    })
-
-    const table = { ...this.state.busRouteTable }
-    table[this.state.operator.key] = Object.keys(routeTable).map( k => routeTable[k] );
-
-    const busRouteTable = table[this.state.operator.key];
-    const diagramData = (busRouteTable.length <= 0) ? '' : `${busRouteTable[0].busStops}\n${busRouteTable[0].times}`;
 
     this.setState({
+      busstopPole,
+      busroutePattern,
+      busTimetable: [],
       selectedRoute: 0,
-      busRouteTable: table,
       loading: '',
-      diagramData,
-    }, () => {
-      AsyncStorage.setItem('busRouteTable', this.state.busRouteTable);
-      AsyncStorage.setItem('data', this.state.diagramData)
+      diagramData: '',
+    }, async () => {
+      await this.loadTimetable();
+      AsyncStorage.setItem('busstopPole', this.state.busstopPole);
+      AsyncStorage.setItem('busroutePattern', this.state.busroutePattern);
+      AsyncStorage.setItem('busTimetable', this.state.busTimetable);
+      AsyncStorage.setItem('diagramData', this.state.diagramData)
       AsyncStorage.setItem('selectedRoute', this.state.selectedRoute)
     })
+  }
 
+  loadTimetable = async () => {
+    const busRoute = this.state.busroutePattern[this.state.selectedRoute];
+    let busTimetable;
+    if (this.state.busTimetable.length <= 0) {
+      this.setState({ loading: '読み込み中...' });
+      const params = {}
+      params['odpt:busroutePattern'] = busRoute['owl:sameAs'];
+      busTimetable = await this.loadJSON(BusTimetableAPI, params);
+      this.setState({ loading: '' });
+    } else {
+      busTimetable = [ ...this.state.busTimetable ];
+    }
+    let calendars = {};
+    let calendarData = [ ...CalendarData ];
+    busTimetable.forEach( t => {
+      const c = matchCalendar(t['odpt:calendar']);
+      if (!CalendarData.some( t => {
+        return (t.key === c);
+      })) {
+        if (!calendars[t['odpt:calendar']]) {
+          calendars[t['odpt:calendar']] = c;
+          calendarData.push({ title: c, key: t['odpt:calendar'] });
+        }
+      }
+    })
+    let selectedCalendar = calendarData.length > this.state.selectedCalendar ? this.state.selectedCalendar : 0;
+    let timeTable = busTimetable.filter( t => {
+      return (t['odpt:calendar'] === calendarData[selectedCalendar].key);
+    })
+    let poleOrder = busRoute['odpt:busstopPoleOrder'];
+
+    function reorder(times, order) {
+      const t = times.map( time => {
+        const q = [];
+        let n = -1;
+        time['odpt:busTimetableObject'].forEach( (t, i) => {
+          while (n < order.length) {
+            n ++;
+            if (order[n]['odpt:busstopPole'] === t['odpt:busstopPole']) {
+              q.push(t)
+              break;
+            } else {
+              q.push({ 'odpt:busstopPole': order[n]['odpt:busstopPole'], 'odpt:departureTime': '-' })
+            }
+          }
+        })
+        return q;
+      })
+      return t;
+    }
+    timeTable = reorder(timeTable, poleOrder);
+    if (busRoute['odpt:direction'] === '2') {
+      poleOrder = [ ...poleOrder ].reverse();
+      timeTable = [ ...timeTable.map( t => [ ...t ].reverse() ) ];
+    } else {
+      poleOrder = [ ...poleOrder ]
+      timeTable = [ ...timeTable.map( t => [ ...t ] ) ]
+    }
+
+    this.setState({
+      busTimetable,
+    }, () => {
+      AsyncStorage.setItem('busTimetable', this.state.busTimetable)
+    })
+
+    const poleTable = {};
+    this.state.busstopPole.forEach( p => {
+      poleTable[p['owl:sameAs']] = p;
+    })
+
+    const poleNames = poleOrder.map( p => {
+      function poleName(p) {
+        const pole = poleTable[p];
+        if (pole && typeof pole['dc:title'] !== 'undefined') {
+          if (typeof pole['odpt:busstopPoleNumber'] !== 'undefined') {
+            return `${pole['dc:title']}(${pole['odpt:busstopPoleNumber']})`;
+          } else {
+            return pole['dc:title'];
+          }
+        } else {
+          return matchBuspole(p);
+        }
+      }
+      return poleName(p['odpt:busstopPole']);
+    }).join(' ');
+
+    const times = `${timeTable.map( t => t.map( t => {
+      if (t['odpt:departureTime']) return t['odpt:departureTime'];
+      if (t['odpt:arrivalTime']) return t['odpt:arrivalTime'];
+      return '-';
+    }).join(' ')).join('\n')}`;
+
+    this.setState({
+      diagramData: `${poleNames}\n${times}`,
+      calendarData,
+    }, () => {
+      AsyncStorage.setItem('diagramData', this.state.diagramData);
+      AsyncStorage.setItem('calendarData', this.state.calendarData);
+    })
   }
 
   onSelectRoute = (e) => {
     const i = e.target.value;
-    const busRouteTable = this.state.busRouteTable[this.state.operator.key];
     this.setState({
       selectedRoute: i,
-      diagramData: `${busRouteTable[i].busStops}\n${busRouteTable[i].times}`,
+      busTimetable: [],
     }, () => {
-      AsyncStorage.setItem('data', this.state.diagramData)
+      this.loadTimetable();
       AsyncStorage.setItem('selectedRoute', this.state.selectedRoute)
+    })
+  }
+
+  onSelectCalendar = (e) => {
+    const i = e.target.value;
+    this.setState({
+      selectedCalendar: i,
+    }, () => {
+      this.loadTimetable();
+      AsyncStorage.setItem('selectedCalendar', this.state.selectedCalendar)
     })
   }
 
@@ -384,14 +384,22 @@ export default class Diagram extends Component {
             this.state.loading ? <Nav className="mr-auto"><span style={{ color: 'red', }}> { this.state.loading } </span></Nav> : null
           }
           {
-            (this.state.busRouteTable[this.state.operator.key] && this.state.busRouteTable[this.state.operator.key].length > 0) ? <Nav className="mr-auto">
+            (this.state.busroutePattern && this.state.busroutePattern.length > 0 && !this.state.loading) ? <Nav className="mr-auto">
             <select defaultValue={this.state.selectedRoute} onChange={ this.onSelectRoute }>
               {
-                this.state.busRouteTable[this.state.operator.key].map( (r, i) => {
+                this.state.busroutePattern.map( (r, i) => {
                   return <option key={i} value={i} >{r.title}</option>
                 })
               }
-            </select></Nav> : null
+            </select>
+            <select style={{ marginLeft: 10, }} defaultValue={this.state.selectedCalendar} onChange={ this.onSelectCalendar }>
+              {
+                this.state.calendarData.map( (r, i) => {
+                  return <option key={i} value={i} >{r.title}</option>
+                })
+              }
+            </select>
+            </Nav> : null
           }
           <div>
             <a
@@ -401,12 +409,12 @@ export default class Diagram extends Component {
               style={{marginRight: 10}}
               role="button"
             >使い方</a>
-            {/* <button
+            <button
               className="btn btn-sm btn-outline-secondary"
               style={{marginRight: 10}}
               type="button"
               onClick={this.openConfigDialog}
-            >読み込み</button> */}
+            >読み込み</button>
             <button
               className="btn btn-sm btn-outline-secondary"
               style={{marginRight: 10}}
