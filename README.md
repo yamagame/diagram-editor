@@ -8,6 +8,12 @@
   <img width="65%" style="border: solid 1px lightgray;" src="./image/screenshot.png"/>
 </p>
 
+## デモアプリ
+
+以下のページでデモアプリを試用できます。
+
+[https://yamagame.github.io/diagram-editor](https://yamagame.github.io/diagram-editor)
+
 ## 準備
 
 npm コマンドを使って node_modules を作成します。
