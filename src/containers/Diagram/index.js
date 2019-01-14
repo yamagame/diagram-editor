@@ -180,11 +180,20 @@ export default class Diagram extends Component {
     this.setState({
       busstopPole: [],
       busroutePattern: [],
+      busTimetable: [],
       showConfigDialog: false,
       consumerKey,
       operator,
       busRouteTable,
-    }, this.loadOpenData)
+      diagramData: '',
+    }, () => {
+      AsyncStorage.setItem('busstopPole', this.state.busstopPole);
+      AsyncStorage.setItem('busroutePattern', this.state.busroutePattern);
+      AsyncStorage.setItem('busTimetable', this.state.busTimetable);
+      AsyncStorage.setItem('diagramData', this.state.diagramData)
+      AsyncStorage.setItem('selectedRoute', this.state.selectedRoute)
+      this.loadOpenData();
+    })
   }
 
   loadJSON = async (command, params={}) => {
