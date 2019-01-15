@@ -263,6 +263,7 @@ export default class Diagram extends Component {
   }
 
   loadTimetable = async () => {
+    const { busstopPole } = this.state;
     const busRoute = this.state.busroutePattern[this.state.selectedRoute];
     let busTimetable;
     if (this.state.busTimetable.length <= 0) {
@@ -270,7 +271,6 @@ export default class Diagram extends Component {
       const params = {}
       params['odpt:busroutePattern'] = busRoute['owl:sameAs'];
       busTimetable = await this.loadJSON(BusTimetableAPI, params);
-      this.setState({ loading: '' });
     } else {
       busTimetable = [ ...this.state.busTimetable ];
     }
@@ -328,26 +328,51 @@ export default class Diagram extends Component {
       AsyncStorage.setItem('busTimetable', this.state.busTimetable)
     })
 
-    const poleTable = {};
-    this.state.busstopPole.forEach( p => {
-      poleTable[p['owl:sameAs']] = p;
-    })
+    const missingPole = [];
 
-    const poleNames = poleOrder.map( p => {
-      function poleName(p) {
-        const pole = poleTable[p];
-        if (pole && typeof pole['dc:title'] !== 'undefined') {
-          if (typeof pole['odpt:busstopPoleNumber'] !== 'undefined') {
-            return `${pole['dc:title']}(${pole['odpt:busstopPoleNumber']})`;
+    const findName = () => {
+      const poleTable = {};
+      busstopPole.forEach( p => {
+        poleTable[p['owl:sameAs']] = p;
+      })
+      return poleOrder.map( p => {
+        function poleName(p) {
+          const pole = poleTable[p];
+          if (pole && typeof pole['dc:title'] !== 'undefined') {
+            if (typeof pole['odpt:busstopPoleNumber'] !== 'undefined') {
+              return `${pole['dc:title']}(${pole['odpt:busstopPoleNumber']})`;
+            } else {
+              return pole['dc:title'];
+            }
           } else {
-            return pole['dc:title'];
+            missingPole.push(p)
+            return p;
           }
-        } else {
-          return matchBuspole(p);
         }
+        return poleName(p['odpt:busstopPole']);
+      });
+    }
+
+    let poleNames = findName();
+
+    if (missingPole.length > 0) {
+      this.setState({ loading: '読み込み中...' });
+    }
+
+    for (var i=0;i<missingPole.length;i++) {
+      const params = {}
+      params['owl:sameAs'] = missingPole[i];
+      const pole = await this.loadJSON(BusstopPoleAPI, params);
+      if (pole) {
+        busstopPole.push(pole[0]);
       }
-      return poleName(p['odpt:busstopPole']);
-    }).join(' ');
+    }
+
+    this.setState({ loading: '' });
+
+    if (missingPole.length > 0) {
+      poleNames = findName();
+    }
 
     const times = `${timeTable.map( t => t.map( t => {
       if (t['odpt:departureTime']) return t['odpt:departureTime'];
@@ -356,11 +381,13 @@ export default class Diagram extends Component {
     }).join(' ')).join('\n')}`;
 
     this.setState({
-      diagramData: `${poleNames}\n${times}`,
+      diagramData: `${poleNames.join(' ')}\n${times}`,
       calendarData,
+      busstopPole,
     }, () => {
       AsyncStorage.setItem('diagramData', this.state.diagramData);
       AsyncStorage.setItem('calendarData', this.state.calendarData);
+      AsyncStorage.setItem('busstopPole', this.state.busstopPole);
     })
   }
 
