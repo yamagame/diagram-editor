@@ -133,11 +133,6 @@ export const save = ({ busStops, pointData, lineData }) => {
     return d;
   })
   const l = lineData.map( v => {
-    if (v.s.x > v.d.x) {
-      const d = v.s;
-      v.s = v.d;
-      v.d = d;
-    }
     v.done = false;
     v.s.lines.push(v);
     v.d.lines.push(v);
@@ -225,8 +220,6 @@ export const save = ({ busStops, pointData, lineData }) => {
       return t;
     }).join(' '));
   })
-
-  // console.log(timeLines);
 
   return {
     busStops: stops.map( v=> v === '' ? '-' : v ).join('\n'),

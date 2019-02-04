@@ -1353,6 +1353,7 @@ export default class DiagramView extends Component {
 
   get diagramData() {
     const t = Utils.save(this);
+console.log(t);
     return textDiagramData(t);
   }
 
