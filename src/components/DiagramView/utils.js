@@ -22,6 +22,8 @@ export const toXPoint = (time, pretime) => {
   let secd = 0;
   if (p.length > 0) {
     hour = parseInt(p[0]);
+    while (hour < 0) hour += 24;
+    while (hour >= 24) hour -= 24;
   }
   if (p.length > 1) {
     mint = parseInt(p[1]);
